@@ -1,13 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type {
-  Candidate,
-  CandidateWithRace,
-  Meetup,
-  Profile,
-  RaceWithCandidates,
-  Vote,
-} from "@/lib/types";
+import type { Meetup, Profile, RaceWithCandidates, Vote } from "@/lib/types";
 
 /**
  * This iteration supports exactly one meetup. When we add more, this constant
@@ -20,7 +13,7 @@ export async function getMeetup(
 ): Promise<Meetup | null> {
   const { data, error } = await supabase
     .from("meetups")
-    .select("id, slug, name, current_candidate_id")
+    .select("id, slug, name, current_race_id")
     .eq("slug", MEETUP_SLUG)
     .maybeSingle();
 
@@ -28,23 +21,21 @@ export async function getMeetup(
   return data as Meetup | null;
 }
 
-export async function getCandidateWithRace(
+export async function getRaceWithCandidates(
   supabase: SupabaseClient,
-  candidateId: number,
-): Promise<CandidateWithRace | null> {
+  raceId: number,
+): Promise<RaceWithCandidates | null> {
   const { data, error } = await supabase
-    .from("candidates")
+    .from("races")
     .select(
-      "id, race_id, name, party, sort_order, race:races(id, name, description, sort_order)",
+      "id, name, description, sort_order, candidates(id, race_id, name, party, sort_order)",
     )
-    .eq("id", candidateId)
+    .eq("id", raceId)
+    .order("sort_order", { ascending: true, referencedTable: "candidates" })
     .maybeSingle();
 
   if (error) throw error;
-  if (!data) return null;
-  // PostgREST returns the embedded row as an object for a to-one relationship,
-  // but types it loosely; narrow it here rather than at every call site.
-  return data as unknown as CandidateWithRace;
+  return data as unknown as RaceWithCandidates | null;
 }
 
 export async function getRacesWithCandidates(
@@ -92,30 +83,27 @@ export async function getProfile(
 }
 
 /**
- * Every vote on a candidate. Row level security narrows this to the caller's
- * own vote unless the caller is an admin.
+ * Every vote in a race. Row level security narrows this to the caller's own
+ * vote unless the caller is an admin.
  */
 export async function getVotes(
   supabase: SupabaseClient,
-  candidateId: number,
+  raceId: number,
 ): Promise<Vote[]> {
   const { data, error } = await supabase
     .from("votes")
-    .select("candidate_id, voter_id, choice, updated_at")
-    .eq("candidate_id", candidateId);
+    .select("race_id, candidate_id, voter_id, choice, updated_at")
+    .eq("race_id", raceId);
 
   if (error) throw error;
   return (data ?? []) as Vote[];
-}
-
-/** Flattens races into the order the moderator steps through candidates. */
-export function candidateSequence(races: RaceWithCandidates[]): Candidate[] {
-  return races.flatMap((race) => race.candidates);
 }
 
 export function describeCandidate(candidate: {
   name: string;
   party: string | null;
 }): string {
-  return candidate.party ? `${candidate.name} (${candidate.party})` : candidate.name;
+  return candidate.party
+    ? `${candidate.name} (${candidate.party})`
+    : candidate.name;
 }

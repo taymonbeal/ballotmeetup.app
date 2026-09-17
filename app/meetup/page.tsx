@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { VotingPanel } from "@/components/voting-panel";
-import { getCandidateWithRace, getMeetup } from "@/lib/meetup";
+import { getMeetup, getRaceWithCandidates } from "@/lib/meetup";
 import { createClient } from "@/lib/supabase/server";
-import type { VoteChoice } from "@/lib/types";
+import type { Vote } from "@/lib/types";
 
 async function MeetupView() {
   const supabase = await createClient();
@@ -22,19 +22,19 @@ async function MeetupView() {
     );
   }
 
-  const candidate = meetup.current_candidate_id
-    ? await getCandidateWithRace(supabase, meetup.current_candidate_id)
+  const race = meetup.current_race_id
+    ? await getRaceWithCandidates(supabase, meetup.current_race_id)
     : null;
 
-  let choice: VoteChoice | null = null;
-  if (candidate) {
-    const { data: vote } = await supabase
+  let vote: Pick<Vote, "choice" | "candidate_id"> | null = null;
+  if (race) {
+    const { data: ownVote } = await supabase
       .from("votes")
-      .select("choice")
-      .eq("candidate_id", candidate.id)
+      .select("choice, candidate_id")
+      .eq("race_id", race.id)
       .eq("voter_id", userId)
       .maybeSingle();
-    choice = (vote?.choice as VoteChoice | undefined) ?? null;
+    vote = ownVote ?? null;
   }
 
   return (
@@ -43,8 +43,8 @@ async function MeetupView() {
       <VotingPanel
         meetupId={meetup.id}
         userId={userId}
-        initialCandidate={candidate}
-        initialChoice={choice}
+        initialRace={race}
+        initialVote={vote}
       />
     </>
   );

@@ -1,6 +1,4 @@
-export type VoteChoice = "yes" | "no" | "abstain";
-
-export const VOTE_CHOICES: VoteChoice[] = ["yes", "no", "abstain"];
+export type VoteChoice = "candidate" | "no_recommendation" | "abstain";
 
 export type Profile = {
   id: string;
@@ -23,39 +21,80 @@ export type Race = {
   sort_order: number;
 };
 
-/** A candidate together with the race it belongs to, for display. */
-export type CandidateWithRace = Candidate & { race: Race };
-
 export type RaceWithCandidates = Race & { candidates: Candidate[] };
 
 export type Meetup = {
   id: number;
   slug: string;
   name: string;
-  current_candidate_id: number | null;
+  current_race_id: number | null;
 };
 
 export type Vote = {
-  candidate_id: number;
+  race_id: number;
+  /** Set only when choice is "candidate". */
+  candidate_id: number | null;
   voter_id: string;
   choice: VoteChoice;
   updated_at: string;
 };
 
-/** Yes/no/abstain counts and whether the recommendation carries. */
-export type Tally = {
-  yes: number;
-  no: number;
+/**
+ * The result of one candidate's tally, or of "no recommendation" — either
+ * can win a race.
+ */
+export type RaceOutcome =
+  | { type: "candidate"; candidateId: number }
+  | { type: "no_recommendation" };
+
+/** Vote counts for one race, and which outcome (if any) has a majority. */
+export type RaceTally = {
+  /** candidate_id -> number of votes for that candidate. */
+  byCandidate: Map<number, number>;
+  noRecommendation: number;
   abstain: number;
-  /** Votes that count toward the majority: abstentions are excluded. */
+  /** Votes that count toward a majority: abstentions are excluded. */
   counted: number;
-  carries: boolean;
+  /** Null when nobody has a majority of the counted votes. */
+  winner: RaceOutcome | null;
 };
 
-export function tally(votes: Pick<Vote, "choice">[]): Tally {
-  const yes = votes.filter((v) => v.choice === "yes").length;
-  const no = votes.filter((v) => v.choice === "no").length;
-  const abstain = votes.filter((v) => v.choice === "abstain").length;
-  const counted = yes + no;
-  return { yes, no, abstain, counted, carries: yes * 2 > counted };
+export function tallyRace(
+  votes: Pick<Vote, "choice" | "candidate_id">[],
+): RaceTally {
+  const byCandidate = new Map<number, number>();
+  let noRecommendation = 0;
+  let abstain = 0;
+
+  for (const vote of votes) {
+    if (vote.choice === "candidate" && vote.candidate_id !== null) {
+      byCandidate.set(
+        vote.candidate_id,
+        (byCandidate.get(vote.candidate_id) ?? 0) + 1,
+      );
+    } else if (vote.choice === "no_recommendation") {
+      noRecommendation += 1;
+    } else {
+      abstain += 1;
+    }
+  }
+
+  const counted =
+    noRecommendation + [...byCandidate.values()].reduce((a, b) => a + b, 0);
+
+  let winner: RaceOutcome | null = null;
+  if (counted > 0) {
+    if (noRecommendation * 2 > counted) {
+      winner = { type: "no_recommendation" };
+    } else {
+      for (const [candidateId, count] of byCandidate) {
+        if (count * 2 > counted) {
+          winner = { type: "candidate", candidateId };
+          break;
+        }
+      }
+    }
+  }
+
+  return { byCandidate, noRecommendation, abstain, counted, winner };
 }

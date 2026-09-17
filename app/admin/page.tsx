@@ -44,8 +44,8 @@ async function AdminView() {
   const [races, participants, votes] = await Promise.all([
     getRacesWithCandidates(supabase, meetup.id),
     getParticipants(supabase),
-    meetup.current_candidate_id
-      ? getVotes(supabase, meetup.current_candidate_id)
+    meetup.current_race_id
+      ? getVotes(supabase, meetup.current_race_id)
       : Promise.resolve([]),
   ]);
 
@@ -56,14 +56,14 @@ async function AdminView() {
           {meetup.name} — moderator
         </h1>
         <p className="text-sm text-muted-foreground">
-          Opening a candidate for voting changes what every participant sees.
+          Opening a race for voting changes what every participant sees.
         </p>
       </div>
       <AdminPanel
         meetupId={meetup.id}
         races={races}
         participants={participants}
-        initialCurrentCandidateId={meetup.current_candidate_id}
+        initialCurrentRaceId={meetup.current_race_id}
         initialVotes={votes}
       />
     </>

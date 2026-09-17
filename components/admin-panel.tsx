@@ -16,72 +16,72 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { candidateSequence, describeCandidate, getVotes } from "@/lib/meetup";
+import { getVotes } from "@/lib/meetup";
 import {
-  tally,
+  tallyRace,
   type Profile,
   type RaceWithCandidates,
   type Vote,
-  type VoteChoice,
 } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-const CHOICE_LABELS: Record<VoteChoice, string> = {
-  yes: "Yes",
-  no: "No",
-  abstain: "Abstain",
-};
+function describeVote(
+  vote: Pick<Vote, "choice" | "candidate_id">,
+  race: RaceWithCandidates,
+): string {
+  if (vote.choice === "no_recommendation") return "No recommendation";
+  if (vote.choice === "abstain") return "Abstain";
+  const candidate = race.candidates.find((c) => c.id === vote.candidate_id);
+  return candidate?.name ?? "Unknown candidate";
+}
 
 export function AdminPanel({
   meetupId,
   races,
   participants,
-  initialCurrentCandidateId,
+  initialCurrentRaceId,
   initialVotes,
 }: {
   meetupId: number;
   races: RaceWithCandidates[];
   participants: Profile[];
-  initialCurrentCandidateId: number | null;
+  initialCurrentRaceId: number | null;
   initialVotes: Vote[];
 }) {
   const supabase = useMemo(() => createClient(), []);
 
-  const [currentCandidateId, setCurrentCandidateId] = useState(
-    initialCurrentCandidateId,
-  );
+  const [currentRaceId, setCurrentRaceId] = useState(initialCurrentRaceId);
   const [votes, setVotes] = useState(initialVotes);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
 
-  const sequence = useMemo(() => candidateSequence(races), [races]);
-  const currentIndex = sequence.findIndex((c) => c.id === currentCandidateId);
-  const current = currentIndex === -1 ? null : sequence[currentIndex];
+  const currentIndex = races.findIndex((r) => r.id === currentRaceId);
+  const current = currentIndex === -1 ? null : races[currentIndex];
 
-  // Vote events arrive without knowing which candidate is open, so the handler
+  // Vote events arrive without knowing which race is open, so the handler
   // reads the current one from a ref rather than a stale closure.
-  const currentIdRef = useRef(currentCandidateId);
+  const currentIdRef = useRef(currentRaceId);
   useEffect(() => {
-    currentIdRef.current = currentCandidateId;
-  }, [currentCandidateId]);
+    currentIdRef.current = currentRaceId;
+  }, [currentRaceId]);
 
   const refreshVotes = useCallback(
-    async (candidateId: number | null) => {
-      if (candidateId === null) {
+    async (raceId: number | null) => {
+      if (raceId === null) {
         setVotes([]);
         return;
       }
-      const rows = await getVotes(supabase, candidateId);
-      if (currentIdRef.current === candidateId) setVotes(rows);
+      const rows = await getVotes(supabase, raceId);
+      if (currentIdRef.current === raceId) setVotes(rows);
     },
     [supabase],
   );
 
   useEffect(() => {
-    void refreshVotes(currentCandidateId);
-  }, [currentCandidateId, refreshVotes]);
+    void refreshVotes(currentRaceId);
+  }, [currentRaceId, refreshVotes]);
 
   useEffect(() => {
     const channel = supabase
@@ -95,8 +95,8 @@ export function AdminPanel({
           filter: `id=eq.${meetupId}`,
         },
         (payload) => {
-          const next = payload.new as { current_candidate_id: number | null };
-          setCurrentCandidateId(next.current_candidate_id);
+          const next = payload.new as { current_race_id: number | null };
+          setCurrentRaceId(next.current_race_id);
         },
       )
       .on(
@@ -117,19 +117,19 @@ export function AdminPanel({
     };
   }, [meetupId, supabase, refreshVotes]);
 
-  const openVoting = async (candidateId: number | null) => {
-    const previous = currentCandidateId;
+  const openVoting = async (raceId: number | null) => {
+    const previous = currentRaceId;
     setBusy(true);
     setError(null);
-    setCurrentCandidateId(candidateId);
+    setCurrentRaceId(raceId);
 
     const { error: updateError } = await supabase
       .from("meetups")
-      .update({ current_candidate_id: candidateId })
+      .update({ current_race_id: raceId })
       .eq("id", meetupId);
 
     if (updateError) {
-      setCurrentCandidateId(previous);
+      setCurrentRaceId(previous);
       setError(updateError.message);
     }
     setBusy(false);
@@ -138,7 +138,23 @@ export function AdminPanel({
   const votesByVoter = new Map(votes.map((vote) => [vote.voter_id, vote]));
   const voted = participants.filter((p) => votesByVoter.has(p.id));
   const notVoted = participants.filter((p) => !votesByVoter.has(p.id));
-  const counts = tally(votes);
+  const counts = current ? tallyRace(votes) : null;
+
+  const winnerLabel = (() => {
+    if (!counts || !current) return null;
+    if (counts.counted === 0) return null;
+    const winner = counts.winner;
+    if (winner === null) {
+      return "No majority of non-abstaining votes: no recommendation.";
+    }
+    if (winner.type === "no_recommendation") {
+      return "A majority of non-abstaining votes says no recommendation.";
+    }
+    const winningCandidate = current.candidates.find(
+      (c) => c.id === winner.candidateId,
+    );
+    return `A majority of non-abstaining votes recommends ${winningCandidate?.name ?? "this candidate"}.`;
+  })();
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -148,15 +164,15 @@ export function AdminPanel({
             variant="outline"
             size="sm"
             disabled={busy || currentIndex <= 0}
-            onClick={() => void openVoting(sequence[currentIndex - 1].id)}
+            onClick={() => void openVoting(races[currentIndex - 1].id)}
           >
             Previous
           </Button>
           <Button
             size="sm"
-            disabled={busy || currentIndex === sequence.length - 1}
+            disabled={busy || currentIndex === races.length - 1}
             onClick={() =>
-              void openVoting(sequence[currentIndex === -1 ? 0 : currentIndex + 1].id)
+              void openVoting(races[currentIndex === -1 ? 0 : currentIndex + 1].id)
             }
           >
             {currentIndex === -1 ? "Start voting" : "Next"}
@@ -164,7 +180,7 @@ export function AdminPanel({
           <Button
             variant="ghost"
             size="sm"
-            disabled={busy || currentCandidateId === null}
+            disabled={busy || currentRaceId === null}
             onClick={() => void openVoting(null)}
           >
             Close voting
@@ -180,75 +196,72 @@ export function AdminPanel({
           <CardHeader>
             <CardTitle>Ballot</CardTitle>
             <CardDescription>
-              Pick the candidate the group is voting on. Everyone&apos;s screen
+              Pick the race the group is voting on. Everyone&apos;s screen
               follows this.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-5">
+          <CardContent className="flex flex-col gap-2">
             {races.map((race) => (
-              <div key={race.id} className="flex flex-col gap-2">
-                <h3 className="text-sm font-semibold">{race.name}</h3>
-                {race.description && (
-                  <p className="text-xs text-muted-foreground">
-                    {race.description}
-                  </p>
+              <button
+                key={race.id}
+                type="button"
+                disabled={busy}
+                onClick={() => void openVoting(race.id)}
+                className={cn(
+                  "flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50",
+                  race.id === currentRaceId
+                    ? "border-primary bg-accent font-medium"
+                    : "border-transparent",
                 )}
-                <div className="flex flex-col gap-1">
-                  {race.candidates.map((candidate) => (
-                    <button
-                      key={candidate.id}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void openVoting(candidate.id)}
-                      className={cn(
-                        "flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50",
-                        candidate.id === currentCandidateId
-                          ? "border-primary bg-accent font-medium"
-                          : "border-transparent",
-                      )}
-                    >
-                      <span>{describeCandidate(candidate)}</span>
-                      {candidate.id === currentCandidateId && (
-                        <Badge>Voting now</Badge>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              >
+                <span>{race.name}</span>
+                {race.id === currentRaceId && <Badge>Voting now</Badge>}
+              </button>
             ))}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>
-              {current ? describeCandidate(current) : "No vote open"}
-            </CardTitle>
+            <CardTitle>{current ? current.name : "No vote open"}</CardTitle>
             <CardDescription>
               {current
                 ? `${voted.length} of ${participants.length} participants have voted`
-                : "Choose a candidate to open voting."}
+                : "Choose a race to open voting."}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
-            <div className="grid grid-cols-3 gap-3 text-center">
-              {(["yes", "no", "abstain"] as const).map((choice) => (
-                <div key={choice} className="rounded-md border p-3">
-                  <div className="text-2xl font-semibold">{counts[choice]}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {CHOICE_LABELS[choice]}
+            {current && counts && (
+              <div className="flex flex-col gap-2">
+                {current.candidates.map((candidate) => (
+                  <div
+                    key={candidate.id}
+                    className="flex items-center justify-between rounded-md border p-3"
+                  >
+                    <span className="text-sm">
+                      {candidate.party
+                        ? `${candidate.name} (${candidate.party})`
+                        : candidate.name}
+                    </span>
+                    <span className="text-lg font-semibold">
+                      {counts.byCandidate.get(candidate.id) ?? 0}
+                    </span>
                   </div>
+                ))}
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <span className="text-sm">No recommendation</span>
+                  <span className="text-lg font-semibold">
+                    {counts.noRecommendation}
+                  </span>
                 </div>
-              ))}
-            </div>
-
-            {current && counts.counted > 0 && (
-              <p className="text-sm">
-                {counts.carries
-                  ? "A majority of non-abstaining votes says yes: the recommendation carries."
-                  : "No majority of non-abstaining votes: no recommendation."}
-              </p>
+                <div className="flex items-center justify-between rounded-md border p-3 text-muted-foreground">
+                  <span className="text-sm">Abstain</span>
+                  <span className="text-lg font-semibold">{counts.abstain}</span>
+                </div>
+              </div>
             )}
+
+            {winnerLabel && <p className="text-sm">{winnerLabel}</p>}
 
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
@@ -264,7 +277,9 @@ export function AdminPanel({
                       >
                         <span>{participant.display_name}</span>
                         <Badge variant="secondary">
-                          {CHOICE_LABELS[votesByVoter.get(participant.id)!.choice]}
+                          {current
+                            ? describeVote(votesByVoter.get(participant.id)!, current)
+                            : ""}
                         </Badge>
                       </li>
                     ))}
