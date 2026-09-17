@@ -1,5 +1,12 @@
 # ballotmeetup.app
 
+> [!WARNING]
+> Basically everything in this repository, including this readme (except this
+> paragraph), was written by Claude Code, often without any substantial human
+> review. LLM-typical failure modes are likely. Please file an issue if you
+> spot anything wrong.
+
+
 Software for running a [ballot meetup](https://www.lesswrong.com/posts/Sa6jkgpkrDnqswRBN/how-to-run-a-ballot-meetup):
 a group works through the ballot one contest at a time, discusses each race for
 a few minutes, and votes on whether to recommend each candidate. A simple
