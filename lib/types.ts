@@ -27,6 +27,15 @@ export type Race = {
 
 export type RaceWithCandidates = Race & { candidates: Candidate[] };
 
+/**
+ * Ballot questions are stored as races whose only two "candidates" are Yes
+ * and No.
+ */
+export function isBallotQuestion(race: RaceWithCandidates): boolean {
+  const names = race.candidates.map((candidate) => candidate.name).sort();
+  return names.length === 2 && names[0] === "No" && names[1] === "Yes";
+}
+
 export type Meetup = {
   id: number;
   slug: string;

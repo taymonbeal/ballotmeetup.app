@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   RealtimeStatus,
@@ -16,7 +16,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getMeetup, getRaceWithCandidates } from "@/lib/meetup";
-import type { RaceWithCandidates, Vote, VoteChoice } from "@/lib/types";
+import {
+  isBallotQuestion,
+  type RaceWithCandidates,
+  type Vote,
+  type VoteChoice,
+} from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { BallotpediaLink, ExternalLink } from "@/components/ballotpedia-link";
@@ -178,9 +183,13 @@ export function VotingPanel({
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Which candidate should the group recommend, if any?
+              {isBallotQuestion(race)
+                ? "Should the group recommend voting Yes or No, if either?"
+                : "Which candidate should the group recommend, if any?"}
             </p>
-            <div className="flex flex-col gap-2">
+            {/* A two-column grid, so every vote button is the same width and
+                only candidate rows have links alongside. */}
+            <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2">
               {race.candidates.map((candidate) => {
                 const option: Selection = {
                   choice: "candidate",
@@ -188,14 +197,14 @@ export function VotingPanel({
                 };
                 const selected = isSelected(option);
                 return (
-                  <div key={candidate.id} className="flex items-center gap-3">
+                  <Fragment key={candidate.id}>
                     <Button
                       size="lg"
                       variant={selected ? "default" : "outline"}
                       disabled={pending !== null}
                       onClick={() => void vote(option)}
                       className={cn(
-                        "h-auto flex-1 justify-start whitespace-normal py-3 text-left text-base",
+                        "h-auto justify-start whitespace-normal py-3 text-left text-base",
                         selected && "ring-2 ring-ring",
                       )}
                     >
@@ -210,7 +219,7 @@ export function VotingPanel({
                       <ExternalLink url={candidate.website_url} label="Website" />
                       <ExternalLink url={candidate.facebook_url} label="Facebook" />
                     </div>
-                  </div>
+                  </Fragment>
                 );
               })}
               <Button
@@ -219,7 +228,7 @@ export function VotingPanel({
                 disabled={pending !== null}
                 onClick={() => void vote({ choice: "no_recommendation" })}
                 className={cn(
-                  "h-auto py-3 text-base",
+                  "col-start-1 h-auto justify-start py-3 text-left text-base",
                   isSelected({ choice: "no_recommendation" }) && "ring-2 ring-ring",
                 )}
               >
@@ -231,7 +240,7 @@ export function VotingPanel({
                 disabled={pending !== null}
                 onClick={() => void vote({ choice: "abstain" })}
                 className={cn(
-                  "h-auto py-3 text-base",
+                  "col-start-1 h-auto justify-start py-3 text-left text-base",
                   isSelected({ choice: "abstain" }) && "ring-2 ring-ring",
                 )}
               >
