@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { SocialLinks } from "@/components/social-links";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { LogoutButton } from "@/components/logout-button";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,10 @@ export function SiteHeader() {
           <Suspense fallback={null}>
             <HeaderUser />
           </Suspense>
-          <ThemeSwitcher />
+          <div className="flex items-center">
+            <SocialLinks />
+            <ThemeSwitcher />
+          </div>
         </div>
       </div>
     </nav>
