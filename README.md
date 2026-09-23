@@ -80,6 +80,33 @@ Node 22 or newer is required (`.nvmrc` pins 24).
 
    A ballot question is just a race whose two candidates are "Yes" and "No".
 
+## Testing
+
+> [!CAUTION]
+> These tests are AI-generated and need substantial improvement before they can
+> be useful.
+
+```bash
+npm test
+```
+
+`tests/unit/` is pure logic (the majority/tally calculation) and always runs.
+`tests/integration/` exercises the real RLS policies and constraints — and
+Realtime delivery — against an actual Supabase instance, so it needs one to
+run against:
+
+```bash
+npm run db:start        # requires Docker; supabase start
+supabase status -o env  # prints the values .env.test.example asks for
+cp .env.test.example .env.test.local   # then fill it in
+npm test
+```
+
+Point this only at a **local** instance (never a hosted project): these tests
+create and delete users and data as part of running. Without `.env.test.local`,
+`npm test` still runs the unit tests; the integration tests just skip
+themselves with a reminder of the above.
+
 ## Schema
 
 | Table | What it holds |
