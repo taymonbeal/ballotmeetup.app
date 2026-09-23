@@ -34,8 +34,8 @@ export default function Home() {
         <p className="text-lg text-muted-foreground">
           A ballot meetup works through the ballot one contest at a time: the
           group discusses a race, then votes on whether to recommend each
-          candidate. This app keeps everyone on the same candidate at the same
-          time and shows the moderator who still needs to vote.
+          candidate. This app keeps everyone on the same race at the same time
+          and shows the moderator who still needs to vote.
         </p>
       </div>
       <Suspense fallback={null}>

@@ -5,8 +5,11 @@ import { ThemeProvider } from "next-themes";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
+// VERCEL_PROJECT_PRODUCTION_URL is set in every Vercel environment (including
+// previews) and points at the production domain, which crawlers can reach even
+// when individual deployment URLs are behind Deployment Protection.
+const defaultUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   : "http://localhost:3000";
 
 export const metadata: Metadata = {
@@ -39,6 +42,9 @@ export default function RootLayout({
           <div className="flex min-h-svh flex-col items-center">
             <SiteHeader />
             <main className="flex w-full flex-1 justify-center">{children}</main>
+            <footer className="flex w-full justify-center border-t border-t-foreground/10 p-5 text-xs text-muted-foreground">
+              This app was built mostly by AI.
+            </footer>
           </div>
         </ThemeProvider>
       </body>
