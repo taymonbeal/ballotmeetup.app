@@ -25,6 +25,7 @@ import {
 } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { BallotpediaLink, ExternalLink } from "@/components/ballotpedia-link";
 
 function describeVote(
   vote: Pick<Vote, "choice" | "candidate_id">,
@@ -202,28 +203,33 @@ export function AdminPanel({
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {races.map((race) => (
-              <button
-                key={race.id}
-                type="button"
-                disabled={busy}
-                onClick={() => void openVoting(race.id)}
-                className={cn(
-                  "flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50",
-                  race.id === currentRaceId
-                    ? "border-primary bg-accent font-medium"
-                    : "border-transparent",
-                )}
-              >
-                <span>{race.name}</span>
-                {race.id === currentRaceId && <Badge>Voting now</Badge>}
-              </button>
+              <div key={race.id} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void openVoting(race.id)}
+                  className={cn(
+                    "flex flex-1 items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50",
+                    race.id === currentRaceId
+                      ? "border-primary bg-accent font-medium"
+                      : "border-transparent",
+                  )}
+                >
+                  <span>{race.name}</span>
+                  {race.id === currentRaceId && <Badge>Voting now</Badge>}
+                </button>
+                <BallotpediaLink url={race.ballotpedia_url} />
+              </div>
             ))}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>{current ? current.name : "No vote open"}</CardTitle>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <CardTitle>{current ? current.name : "No vote open"}</CardTitle>
+              {current && <BallotpediaLink url={current.ballotpedia_url} />}
+            </div>
             <CardDescription>
               {current
                 ? `${voted.length} of ${participants.length} participants have voted`
@@ -236,13 +242,18 @@ export function AdminPanel({
                 {current.candidates.map((candidate) => (
                   <div
                     key={candidate.id}
-                    className="flex items-center justify-between rounded-md border p-3"
+                    className="flex items-center justify-between gap-3 rounded-md border p-3"
                   >
-                    <span className="text-sm">
-                      {candidate.party
-                        ? `${candidate.name} (${candidate.party})`
-                        : candidate.name}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-sm">
+                        {candidate.party
+                          ? `${candidate.name} (${candidate.party})`
+                          : candidate.name}
+                      </span>
+                      <BallotpediaLink url={candidate.ballotpedia_url} />
+                      <ExternalLink url={candidate.website_url} label="Website" />
+                      <ExternalLink url={candidate.facebook_url} label="Facebook" />
+                    </div>
                     <span className="text-lg font-semibold">
                       {counts.byCandidate.get(candidate.id) ?? 0}
                     </span>

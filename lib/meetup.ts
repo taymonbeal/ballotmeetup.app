@@ -28,7 +28,7 @@ export async function getRaceWithCandidates(
   const { data, error } = await supabase
     .from("races")
     .select(
-      "id, name, description, sort_order, candidates(id, race_id, name, party, sort_order)",
+      "id, name, description, sort_order, ballotpedia_url, candidates(id, race_id, name, party, sort_order, ballotpedia_url, website_url, facebook_url)",
     )
     .eq("id", raceId)
     .order("sort_order", { ascending: true, referencedTable: "candidates" })
@@ -45,7 +45,7 @@ export async function getRacesWithCandidates(
   const { data, error } = await supabase
     .from("races")
     .select(
-      "id, name, description, sort_order, candidates(id, race_id, name, party, sort_order)",
+      "id, name, description, sort_order, ballotpedia_url, candidates(id, race_id, name, party, sort_order, ballotpedia_url, website_url, facebook_url)",
     )
     .eq("meetup_id", meetupId)
     .order("sort_order", { ascending: true })

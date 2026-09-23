@@ -12,6 +12,9 @@ export type Candidate = {
   name: string;
   party: string | null;
   sort_order: number;
+  ballotpedia_url: string | null;
+  website_url: string | null;
+  facebook_url: string | null;
 };
 
 export type Race = {
@@ -19,6 +22,7 @@ export type Race = {
   name: string;
   description: string | null;
   sort_order: number;
+  ballotpedia_url: string | null;
 };
 
 export type RaceWithCandidates = Race & { candidates: Candidate[] };

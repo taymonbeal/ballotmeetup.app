@@ -19,6 +19,7 @@ import { getMeetup, getRaceWithCandidates } from "@/lib/meetup";
 import type { RaceWithCandidates, Vote, VoteChoice } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { BallotpediaLink, ExternalLink } from "@/components/ballotpedia-link";
 
 /** What the participant selected: a specific candidate, or one of the two
  * fixed options. Kept separate from the stored (choice, candidate_id) pair
@@ -167,7 +168,10 @@ export function VotingPanel({
       {race ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">{race.name}</CardTitle>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <CardTitle className="text-2xl">{race.name}</CardTitle>
+              <BallotpediaLink url={race.ballotpedia_url} />
+            </div>
             {race.description && (
               <CardDescription>{race.description}</CardDescription>
             )}
@@ -184,23 +188,29 @@ export function VotingPanel({
                 };
                 const selected = isSelected(option);
                 return (
-                  <Button
-                    key={candidate.id}
-                    size="lg"
-                    variant={selected ? "default" : "outline"}
-                    disabled={pending !== null}
-                    onClick={() => void vote(option)}
-                    className={cn(
-                      "h-auto justify-start whitespace-normal py-3 text-left text-base",
-                      selected && "ring-2 ring-ring",
-                    )}
-                  >
-                    {pending === candidate.id
-                      ? "Saving…"
-                      : candidate.party
-                        ? `${candidate.name} (${candidate.party})`
-                        : candidate.name}
-                  </Button>
+                  <div key={candidate.id} className="flex items-center gap-3">
+                    <Button
+                      size="lg"
+                      variant={selected ? "default" : "outline"}
+                      disabled={pending !== null}
+                      onClick={() => void vote(option)}
+                      className={cn(
+                        "h-auto flex-1 justify-start whitespace-normal py-3 text-left text-base",
+                        selected && "ring-2 ring-ring",
+                      )}
+                    >
+                      {pending === candidate.id
+                        ? "Saving…"
+                        : candidate.party
+                          ? `${candidate.name} (${candidate.party})`
+                          : candidate.name}
+                    </Button>
+                    <div className="flex flex-col items-start gap-1">
+                      <BallotpediaLink url={candidate.ballotpedia_url} />
+                      <ExternalLink url={candidate.website_url} label="Website" />
+                      <ExternalLink url={candidate.facebook_url} label="Facebook" />
+                    </div>
+                  </div>
                 );
               })}
               <Button

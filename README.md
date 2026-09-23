@@ -67,9 +67,12 @@ Node 22 or newer is required (`.nvmrc` pins 24).
    where id = (select id from auth.users where email = 'you@example.com');
    ```
 
-5. Replace the placeholder candidates. The seed migration creates the
-   Massachusetts statewide races with stand-in candidate names, because the
-   real names have to be typed in by hand for now:
+5. The ballot is seeded with the nine statewide questions and the specific
+   races the meetup this is for actually has, in `supabase/migrations/`. It
+   was compiled from news coverage and campaign sites, not the Secretary of
+   the Commonwealth's own candidate list (that page blocks automated fetches),
+   so double check it against an official source before the meetup. Fix
+   anything wrong directly in SQL:
 
    ```sql
    select c.id, r.name as race, c.name from public.candidates c
@@ -113,8 +116,8 @@ themselves with a reminder of the above.
 | --- | --- |
 | `profiles` | One row per signed-up user, created by a trigger on `auth.users`. `is_admin` marks moderators and is only ever set by hand in SQL. |
 | `meetups` | The meetup, and `current_race_id` — the race currently open for a vote. This single column is the shared state the whole app revolves around. |
-| `races` | A contest on the ballot, ordered by `sort_order`. |
-| `candidates` | A candidate in a race (or a Yes/No option on a ballot question). |
+| `races` | A contest on the ballot, ordered by `sort_order`. `ballotpedia_url` is optional — not every race has a Ballotpedia page (county-level races in particular often don't). |
+| `candidates` | A candidate in a race (or a Yes/No option on a ballot question). `ballotpedia_url` is optional the same way; a ballot question's Yes/No options never have one — the question itself does, on the race. |
 | `votes` | One row per participant per race: `choice` is `candidate`, `no_recommendation`, or `abstain`, and `candidate_id` is set only when `choice = 'candidate'`. |
 
 A voter picks one thing per race, not a yes/no per candidate — `votes` has a
