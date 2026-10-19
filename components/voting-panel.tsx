@@ -200,7 +200,7 @@ export function VotingPanel({
                   <Fragment key={candidate.id}>
                     <Button
                       size="lg"
-                      variant={selected ? "default" : "outline"}
+                      variant={selected ? "default" : "outline-solid"}
                       disabled={pending !== null}
                       onClick={() => void vote(option)}
                       className={cn(
@@ -224,7 +224,7 @@ export function VotingPanel({
               })}
               <Button
                 size="lg"
-                variant={isSelected({ choice: "no_recommendation" }) ? "default" : "outline"}
+                variant={isSelected({ choice: "no_recommendation" }) ? "default" : "outline-solid"}
                 disabled={pending !== null}
                 onClick={() => void vote({ choice: "no_recommendation" })}
                 className={cn(
@@ -236,7 +236,7 @@ export function VotingPanel({
               </Button>
               <Button
                 size="lg"
-                variant={isSelected({ choice: "abstain" }) ? "default" : "outline"}
+                variant={isSelected({ choice: "abstain" }) ? "default" : "outline-solid"}
                 disabled={pending !== null}
                 onClick={() => void vote({ choice: "abstain" })}
                 className={cn(
